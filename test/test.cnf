@@ -1,8 +1,3 @@
-[POSTGRESQL]
-
-dsn = postgres://postgres:test@127.0.0.1:5432/test23
-pool_threads = 40
-
 [BITCOIND]
 
 zeromq = tcp://127.0.0.1:8900

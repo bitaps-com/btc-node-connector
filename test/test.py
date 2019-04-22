@@ -3,7 +3,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 import configparser
-import bitcoindconnector
+import btcconnector
 import argparse
 import asyncio
 import sys
@@ -11,7 +11,6 @@ import signal
 import traceback
 import logging
 import colorlog
-from pythonjsonlogger import jsonlogger
 import warnings
 import zmq
 import uvloop
@@ -19,7 +18,6 @@ import pybtc
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
-warnings.filterwarnings("ignore")
 
 
 class App:
@@ -36,7 +34,7 @@ class App:
         self.confirm_target = 20
         self.ttc = 0
         self.rpc = False
-        self.log.info("test state server init ...")
+        self.log.info("test server init ...")
         signal.signal(signal.SIGINT, self.terminate)
         signal.signal(signal.SIGTERM, self.terminate)
         asyncio.ensure_future(self.start(config, connector_debug, connector_debug_full), loop=self.loop)
@@ -44,28 +42,13 @@ class App:
     async def start(self, config, connector_debug, connector_debug_full):
         # init database
         try:
-            # self.log.info("Init mysql pool ")
-            # await self.init_mysql()
-            # self.mysql_pool = await \
-            #     aiomysql.create_pool(host=self.MYSQL_CONFIG["host"],
-            #                          port=int(self.MYSQL_CONFIG["port"]),
-            #                          user=self.MYSQL_CONFIG["user"],
-            #                          password=self.MYSQL_CONFIG["password"],
-            #                          db=self.MYSQL_CONFIG["database"],
-            #                          loop=self.loop,
-            #                          minsize=10, maxsize=60)
-            dsn = config['POSTGRESQL']["dsn"].replace(',',' ')
-            pool_threads = config['POSTGRESQL']["pool_threads"]
             zeromq = config['BITCOIND']["zeromq"]
             rpc = config['BITCOIND']["rpc"]
 
-            self.connector = bitcoindconnector.Connector(rpc,
-                                                         zeromq,
-                                                         dsn,
-                                                         loop,
-                                                         self.log,
-                                                         tx_handler=self.new_transaction_handler,
-                                                         start_block=1)
+            self.connector = btcconnector.Connector(rpc,
+                                                    zeromq,
+                                                    self.log,
+                                                    before_block_handler = self.before_block_handler)
             # await self.bitcoindconnector.connected
             # self.bitcoindconnector.subscribe_blocks()
             # self.bitcoindconnector.subscribe_transactions()
@@ -104,11 +87,12 @@ class App:
     #         self.log.error(str(traceback.format_exc()))
     #     conn.close()
 
-    async def orphan_block_handler(self, orphan_hash, cur):
+    async def orphan_block_handler(self, orphan_hash):
         self.log.warning("handler remove orphan %s" % orphan_hash)
 
-    async def new_block_handler(self, data, cur):
+    async def before_block_handler(self, data):
         self.log.warning("handler new block %s" % str(data["hash"]))
+        # await asyncio.sleep(1)
 
     async def new_transaction_handler(self, data, ft, a,b,c):
 
@@ -186,26 +170,19 @@ def init(loop, argv):
                 log_level = logging.INFO
             elif config['LOG']["log_level"] == "debug":
                 log_level = logging.DEBUG
+    log_level = logging.INFO
 
-    if args.json:
-        logger = logging.getLogger()
-        logHandler = logging.StreamHandler()
-        formatter = jsonlogger.JsonFormatter('%(created)s %(asctime)s %(levelname)s %(message)s %(module)s %(lineno)d)')
-        logHandler.setFormatter(formatter)
-        logger.addHandler(logHandler)
-        logger.setLevel(log_level)
-    else:
-        logger.setLevel(log_level)
-        logger.debug("test")
-        fh = logging.FileHandler(log_file)
-        fh.setLevel(log_level)
-        ch = logging.StreamHandler()
-        ch.setLevel(log_level)
-        formatter = colorlog.ColoredFormatter('%(log_color)s%(asctime)s %(levelname)s: %(message)s (%(module)s:%(lineno)d)')
-        fh.setFormatter(formatter)
-        ch.setFormatter(formatter)
-        logger.addHandler(fh)
-        logger.addHandler(ch)
+    logger.setLevel(log_level)
+    logger.debug("test")
+    fh = logging.FileHandler(log_file)
+    fh.setLevel(log_level)
+    ch = logging.StreamHandler()
+    ch.setLevel(log_level)
+    formatter = colorlog.ColoredFormatter('%(log_color)s%(asctime)s %(levelname)s: %(message)s (%(module)s:%(lineno)d)')
+    fh.setFormatter(formatter)
+    ch.setFormatter(formatter)
+    logger.addHandler(fh)
+    logger.addHandler(ch)
 
 
     logger.setLevel(log_level)

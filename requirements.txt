@@ -1,6 +1,3 @@
-aiohttp
-python-json-logger
 pyzmq
-asyncpg
 colorlog
 https://github.com/bitaps-com/aiojsonrpc
