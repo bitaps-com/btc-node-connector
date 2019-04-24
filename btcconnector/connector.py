@@ -82,7 +82,7 @@ class Connector:
 
     async def start(self):
         while True:
-            self.log.info("Сonnector initialization")
+            self.log.info("Connector initialization")
             try:
                 self.rpc = aiojsonrpc.rpc(self.rpc_url, self.loop, timeout=self.rpc_timeout)
                 self.node_last_block = await self.rpc.getblockcount()
